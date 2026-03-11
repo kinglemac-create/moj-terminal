@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALPHA TERMINAL | Real-Time Market Intelligence</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0a0a0f;
+            --card-bg: rgba(20, 20, 25, 0.7);
+            --border-color: #2a2a35;
+            --text-main: #e0e0e0;
+            --text-muted: #888;
+            --bullish: #00ff88;
+            --bearish: #ff4444;
+            --neutral: #ffcc00;
+            --accent: #1e90ff;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            line-height: 1.5;
+        }
+
+        /* --- UI COMPONENTS --- */
+
+        /* Header & Market Status */
+        header {
+            padding: 10px 20px;
+            background: rgba(10, 10, 15, 0.9);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .terminal-logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: bold;
+            color: var(--bullish);
+            letter-spacing: -1px;
+        }
+
+        .market-info {
+            display: flex;
+            gap: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+        }
+
+        /* Breaking News Banner */
+        #breaking-banner {
+            background: #ff4444;
+            color: white;
+            padding: 5px;
+            text-align: center;
+            font-weight: bold;
+            display: none;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+            0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; }
+        }
+
+        /* Layout Grid */
+        .container {
+            display: grid;
+            grid-template-columns: 280px 1fr 300px;
+            gap: 15px;
+            padding: 15px;
+            height: calc(100vh - 100px);
+        }
+
+        /* Sidebar & Watchlist */
+        .sidebar {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .sidebar h3 { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; }
+
+        .watchlist-input {
+            display: flex;
+            gap: 5px;
+        }
+
+        input {
+            background: #1a1a25;
+            border: 1px solid var(--border-color);
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            width: 100%;
+        }
+
+        .btn {
+            background: var(--accent);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .watchlist-items {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .ticker-tag {
+            background: #2a2a35;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        /* Feed Area */
+        .feed-container {
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .filter-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+
+        .tab {
+            padding: 6px 15px;
+            background: #1a1a25;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+
+        .tab.active {
+            border-color: var(--accent);
+            background: rgba(30, 144, 255, 0.2);
+        }
+
+        /* News Card (Glassmorphism) */
+        .news-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 12px;
+            transition: transform 0.2s;
+            position: relative;
+        }
+
+        .news-card:hover { border-color: #444; }
+
+        .impact-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .impact-10 { background: rgba(255, 68, 68, 0.2); color: var(--bearish); border: 1px solid var(--bearish); }
+        .impact-1 { background: rgba(0, 255, 136, 0.2); color: var(--bullish); border: 1px solid var(--bullish); }
+
+        .news-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .news-title {
+            font-weight: 600;
+            font-size: 1.05rem;
+            margin-bottom: 10px;
+            display: block;
+            color: var(--text-main);
+            text-decoration: none;
+        }
+
+        .news-explanation {
+            font-size: 0.85rem;
+            font-style: italic;
+            color: var(--accent);
+            border-left: 2px solid var(--accent);
+            padding-left: 10px;
+            margin-top: 10px;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+
+        @media (max-width: 1024px) {
+            .container { grid-template-columns: 1fr; }
+            .sidebar, .right-panel { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="breaking-banner">⚠️ HIGH IMPACT: FED INTEREST RATE DECISION DUE IN 2 HOURS - EXPECT VOLATILITY</div>
+
+<header>
+    <div class="terminal-logo">ALPHA_TERMINAL v1.0</div>
+    <div class="market-info">
+        <span id="market-status">NYSE: <span style="color:var(--bullish)">OPEN</span></span>
+        <span id="timer">REFRESH: 05:00</span>
+        <span id="clock">00:00:00 UTC</span>
+    </div>
+</header>
+
+<div class="container">
+    <aside class="sidebar">
+        <div>
+            <h3>Categories</h3>
+            <div style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">
+                <div class="tab active" onclick="filterFeed('all')">🌍 All Intelligence</div>
+                <div class="tab" onclick="filterFeed('macro')">📉 Macro / Central Banks</div>
+                <div class="tab" onclick="filterFeed('usa')">🇺🇸 US Markets</div>
+                <div class="tab" onclick="filterFeed('geo')">⚔️ Geopolitics</div>
+                <div class="tab" onclick="filterFeed('commodity')">🛢️ Commodities</div>
+                <div class="tab" onclick="filterFeed('crypto')">💱 Forex & Crypto</div>
+            </div>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border-color);">
+
+        <div>
+            <h3>My Watchlist</h3>
+            <div class="watchlist-input" style="margin: 10px 0;">
+                <input type="text" id="tickerInput" placeholder="Enter Ticker (eg. NVDA)">
+                <button class="btn" onclick="addToWatchlist()">+</button>
+            </div>
+            <div class="watchlist-items" id="watchlistContainer">
+                </div>
+        </div>
+    </aside>
+
+    <main class="feed-container">
+        <div id="news-feed">
+            <div style="text-align:center; padding:50px; color:var(--text-muted);">
+                Initializing secure feed connection...
+            </div>
+        </div>
+    </main>
+
+    <aside class="sidebar right-panel">
+        <h3>Alert History</h3>
+        <div id="alert-history" style="font-size: 0.8rem; color: var(--text-muted);">
+            No ticker mentions detected.
+        </div>
+    </aside>
+</div>
+
+
+
+<script>
+    // --- KONFIGURACIJA ---
+    const SOURCES = [
+        { name: 'Reuters', url: 'https://www.reutersagency.com/feed/', cat: 'macro' },
+        { name: 'CNBC', url: 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114', cat: 'usa' },
+        { name: 'Investing.com', url: 'https://www.investing.com/rss/news.rss', cat: 'all' },
+        { name: 'Yahoo Finance', url: 'https://finance.yahoo.com/news/rssindex', cat: 'usa' }
+    ];
+
+    let watchlist = JSON.parse(localStorage.getItem('alpha_watchlist')) || ['POET', 'NVDA', 'TSLA', 'BTC'];
+    let newsDatabase = [];
+    let countdown = 300;
+
+    // --- INITIALIZATION ---
+    window.onload = () => {
+        updateClock();
+        updateWatchlistUI();
+        fetchNews();
+        startTimer();
+        requestNotifications();
+        
+        setInterval(updateClock, 1000);
+        setInterval(updateMarketStatus, 60000);
+    };
+
+    function requestNotifications() {
+        if ("Notification" in window) {
+            Notification.requestPermission();
+        }
+    }
+
+    // --- CORE LOGIC: NEWS FETCHING ---
+    async function fetchNews() {
+        const feedElement = document.getElementById('news-feed');
+        // Napomena: U produkciji bi koristili backend parser, ovdje koristimo AllOrigins proxy
+        const proxy = "https://api.allorigins.win/get?url=";
+        
+        let allItems = [];
+
+        for (const source of SOURCES) {
+            try {
+                const response = await fetch(`${proxy}${encodeURIComponent(source.url)}`);
+                const data = await response.json();
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(data.contents, "text/xml");
+                const items = xmlDoc.querySelectorAll("item");
+
+                items.forEach(el => {
+                    const title = el.querySelector("title").textContent;
+                    const link = el.querySelector("link").textContent;
+                    const pubDate = el.querySelector("pubDate") ? el.querySelector("pubDate").textContent : new Date().toLocaleTimeString();
+                    
+                    if (!newsDatabase.some(n => n.link === link)) {
+                        const analyzed = analyzeSentiment(title);
+                        allItems.push({
+                            title, link, pubDate, 
+                            source: source.name, 
+                            category: source.cat,
+                            ...analyzed
+                        });
+                    }
+                });
+            } catch (e) { console.error("Feed error:", source.name); }
+        }
+
+        // Merge i Sort
+        newsDatabase = [...allItems, ...newsDatabase].slice(0, 100);
+        renderFeed(newsDatabase);
+        checkWatchlistMatches(allItems);
+    }
+
+    // --- AI SIMULACIJA: SENTIMENT & IMPACT ---
+    function analyzeSentiment(title) {
+        const bullTerms = ['surge', 'growth', 'rise', 'profit', 'upgrade', 'beat', 'bullish', 'buy', 'expansion'];
+        const bearTerms = ['fall', 'drop', 'slump', 'inflation', 'cut', 'war', 'recession', 'miss', 'bearish', 'sell'];
+        
+        let score = Math.floor(Math.random() * 5) + 3; // Bazni score
+        let sentiment = 'NEUTRAL';
+        let color = 'var(--neutral)';
+        let why = "Market is evaluating the long-term implications of this data point.";
+
+        const lowerTitle = title.toLowerCase();
+
+        if (bullTerms.some(t => lowerTitle.includes(t))) {
+            sentiment = 'BULLISH';
+            score += 2;
+            color = 'var(--bullish)';
+            why = "Positive momentum detected in sector-specific news or macro data.";
+        } else if (bearTerms.some(t => lowerTitle.includes(t))) {
+            sentiment = 'BEARISH';
+            score += 3;
+            color = 'var(--bearish)';
+            why = "Potential downside risk identified due to economic tightening or negative earnings.";
+        }
+
+        if (score > 8) document.getElementById('breaking-banner').style.display = 'block';
+
+        return { score, sentiment, color, why };
+    }
+
+    // --- RENDERING ---
+    function renderFeed(items) {
+        const container = document.getElementById('news-feed');
+        container.innerHTML = items.map(item => `
+            <div class="news-card">
+                <div class="impact-badge impact-${item.score > 7 ? '10' : '1'}">
+                    IMPACT: ${item.score}/10 | ${item.sentiment}
+                </div>
+                <div class="news-meta">${item.source} • ${new Date(item.pubDate).toLocaleTimeString()}</div>
+                <a href="${item.link}" target="_blank" class="news-title">${item.title}</a>
+                <div class="news-explanation">
+                    <strong>AI Insight:</strong> ${item.why}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // --- WATCHLIST LOGIC ---
+    function addToWatchlist() {
+        const input = document.getElementById('tickerInput');
+        const val = input.value.toUpperCase().trim();
+        if (val && !watchlist.includes(val)) {
+            watchlist.push(val);
+            saveWatchlist();
+            updateWatchlistUI();
+            input.value = '';
+        }
+    }
+
+    function saveWatchlist() {
+        localStorage.setItem('alpha_watchlist', JSON.stringify(watchlist));
+    }
+
+    function updateWatchlistUI() {
+        const container = document.getElementById('watchlistContainer');
+        container.innerHTML = watchlist.map(t => `
+            <span class="ticker-tag" onclick="removeTicker('${t}')">${t} ✕</span>
+        `).join('');
+    }
+
+    function removeTicker(t) {
+        watchlist = watchlist.filter(item => item !== t);
+        saveWatchlist();
+        updateWatchlistUI();
+    }
+
+    function checkWatchlistMatches(newItems) {
+        newItems.forEach(item => {
+            watchlist.forEach(ticker => {
+                if (item.title.toUpperCase().includes(ticker)) {
+                    triggerAlert(ticker, item.title);
+                }
+            });
+        });
+    }
+
+    function triggerAlert(ticker, title) {
+        // UI Alert
+        const history = document.getElementById('alert-history');
+        const div = document.createElement('div');
+        div.style.borderLeft = "2px solid var(--bullish)";
+        div.style.padding = "5px";
+        div.style.marginBottom = "10px";
+        div.innerHTML = `<strong>$${ticker}</strong>: ${title.substring(0, 50)}...`;
+        history.prepend(div);
+
+        // Browser Push
+        if (Notification.permission === "granted") {
+            new Notification(`WATCHLIST ALERT: ${ticker}`, { body: title });
+        }
+    }
+
+    // --- UTILS ---
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('clock').innerText = now.toISOString().split('T')[1].split('.')[0] + " UTC";
+    }
+
+    function startTimer() {
+        setInterval(() => {
+            countdown--;
+            const mins = Math.floor(countdown / 60);
+            const secs = countdown % 60;
+            document.getElementById('timer').innerText = `REFRESH: ${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            
+            if (countdown <= 0) {
+                countdown = 300;
+                fetchNews();
+            }
+        }, 1000);
+    }
+
+    function updateMarketStatus() {
+        const now = new Date();
+        const hour = now.getUTCHours();
+        const statusEl = document.getElementById('market-status');
+        
+        // Jednostavna logika za NYSE (14:30 - 21:00 UTC)
+        if (hour >= 14 && hour < 21) {
+            statusEl.innerHTML = `NYSE: <span style="color:var(--bullish)">OPEN</span>`;
+        } else {
+            statusEl.innerHTML = `NYSE: <span style="color:var(--bearish)">CLOSED</span>`;
+        }
+    }
+
+    function filterFeed(cat) {
+        // Visual update
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        event.target.classList.add('active');
+        
+        if (cat === 'all') {
+            renderFeed(newsDatabase);
+        } else {
+            const filtered = newsDatabase.filter(n => n.category === cat);
+            renderFeed(filtered);
+        }
+    }
+</script>
+
+</body><link rel="manifest" href="manifest.json">
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+</script>
+</html>
